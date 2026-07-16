@@ -1,0 +1,75 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in BreezeAPI
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug. Please fill out the sections below with as much detail as possible.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear description of the bug. What happened, and what did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Provide the steps to reproduce the behavior.
+      placeholder: |
+        1. Initialize BreezeAPI with ...
+        2. Call HookBySymbol with ...
+        3. Observe crash / error / incorrect behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Relevant Code
+      description: Include the code that triggers the bug, if applicable.
+      render: cpp
+
+  - type: input
+    id: version
+    attributes:
+      label: BreezeAPI Version
+      description: Which version or commit hash are you using?
+      placeholder: v1.0.0 or commit hash
+    validations:
+      required: true
+
+  - type: dropdown
+    id: arch
+    attributes:
+      label: Target Architecture
+      options:
+        - arm64-v8a
+        - armeabi-v7a
+        - x86_64
+        - Multiple / Other
+    validations:
+      required: true
+
+  - type: input
+    id: android-version
+    attributes:
+      label: Android Version
+      placeholder: e.g. Android 14 (API 34)
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log Output
+      description: Paste relevant logcat output or build logs.
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other information that might help diagnose the issue.

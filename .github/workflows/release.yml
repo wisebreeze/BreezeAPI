@@ -1,0 +1,105 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up Android NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r27c
+          add-to-path: true
+
+      - name: Set up CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.25.x'
+
+      - name: Build for arm64-v8a
+        run: |
+          cmake -B build/arm64-v8a \
+            -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-26 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -S .
+          cmake --build build/arm64-v8a -j$(nproc)
+
+      - name: Build for armeabi-v7a
+        run: |
+          cmake -B build/armeabi-v7a \
+            -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=armeabi-v7a \
+            -DANDROID_PLATFORM=android-26 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -S .
+          cmake --build build/armeabi-v7a -j$(nproc)
+
+      - name: Build for x86_64
+        run: |
+          cmake -B build/x86_64 \
+            -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=x86_64 \
+            -DANDROID_PLATFORM=android-26 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -S .
+          cmake --build build/x86_64 -j$(nproc)
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          cp build/arm64-v8a/out/lib/arm64-v8a/libbreeze_api.so release/libbreeze_api_arm64-v8a.so
+          cp build/armeabi-v7a/out/lib/armeabi-v7a/libbreeze_api.so release/libbreeze_api_armeabi-v7a.so
+          cp build/x86_64/out/lib/x86_64/libbreeze_api.so release/libbreeze_api_x86_64.so
+
+          # Copy public headers
+          mkdir -p release/include
+          cp include/breeze_api.h release/include/
+          cp include/hook_manager.h release/include/
+          cp include/symbol_resolver.h release/include/
+          cp include/logger.h release/include/
+
+          # Create zip
+          cd release
+          zip -r ../breeze_api_${{ github.ref_name }}.zip .
+          cd ..
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: BreezeAPI ${{ github.ref_name }}
+          body: |
+            BreezeAPI ${{ github.ref_name }}
+
+            ## Downloads
+            - `breeze_api_${{ github.ref_name }}.zip` - All ABIs + headers
+            - `libbreeze_api_arm64-v8a.so` - ARM64 (device)
+            - `libbreeze_api_armeabi-v7a.so` - ARM32 (legacy device)
+            - `libbreeze_api_x86_64.so` - x86_64 (emulator)
+
+            ## Usage
+            See [API Reference](docs/API.md) for detailed documentation.
+          draft: false
+          prerelease: false
+          files: |
+            breeze_api_${{ github.ref_name }}.zip
+            release/libbreeze_api_arm64-v8a.so
+            release/libbreeze_api_armeabi-v7a.so
+            release/libbreeze_api_x86_64.so

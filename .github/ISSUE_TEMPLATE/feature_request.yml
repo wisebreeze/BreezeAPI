@@ -1,0 +1,44 @@
+name: Feature Request
+description: Propose a new feature or API change for BreezeAPI
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for your feature request. Please describe the problem or use case that motivates this request.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Use Case
+      description: What problem does this feature solve? What are you trying to accomplish that is currently not possible or difficult?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: Describe your proposed API or behavior. Include code examples if possible.
+      placeholder: |
+        // Example:
+        HookStatus HookByPattern(
+            const std::string& library,
+            const std::string& pattern,   // regex pattern
+            Address replace,
+            Address* original = nullptr
+        );
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other approaches have you considered?
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other information, references, or examples that support this request.

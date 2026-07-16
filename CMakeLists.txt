@@ -27,6 +27,7 @@ add_library(quickjs STATIC
     ${QUICKJS_SRC_DIR}/libunicode.c
     ${QUICKJS_SRC_DIR}/dtoa.c
     ${QUICKJS_SRC_DIR}/quickjs-libc.c
+    ${QUICKJS_SRC_DIR}/cutils.c
 )
 
 target_include_directories(quickjs PUBLIC

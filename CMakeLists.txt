@@ -24,7 +24,7 @@ add_library(quickjs STATIC
     ${QUICKJS_SRC_DIR}/quickjs.c
     ${QUICKJS_SRC_DIR}/libregexp.c
     ${QUICKJS_SRC_DIR}/libunicode.c
-    ${QUICKJS_SRC_DIR}/libbf.c
+    ${QUICKJS_SRC_DIR}/dtoa.c
     ${QUICKJS_SRC_DIR}/quickjs-libc.c
 )
 

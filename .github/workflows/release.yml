@@ -101,7 +101,7 @@ jobs:
           #   @PAGEOFF  -> #:lo12: (ELF low-12-bit relocation modifier)
           ASM_FILE="third_party/dobby/source/TrampolineBridge/ClosureTrampolineBridge/arm64/closure_bridge_arm64.asm"
           if [ -f "$ASM_FILE" ]; then
-            sed -i 's/@PAGE//g; s/@PAGEOFF/#:lo12:/g' "$ASM_FILE"
+            sed -i 's/@PAGEOFF/#:lo12:/g; s/@PAGE//g' "$ASM_FILE"
             echo "Patched $ASM_FILE for ELF compatibility"
             grep -n 'adrp\|add.*lo12' "$ASM_FILE"
           else

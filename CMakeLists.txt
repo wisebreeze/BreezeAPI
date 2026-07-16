@@ -65,8 +65,12 @@ target_include_directories(breeze_api PUBLIC
     ${QUICKJS_SRC_DIR}
 )
 
+# Link dobby_static instead of dobby shared to avoid duplicate symbol
+# issues from Dobby's inline Logger::Shared() across compilation units.
+# --exclude-libs hides all symbols from static archives so they don't
+# leak into the final .so symbol table.
 target_link_libraries(breeze_api
-    dobby
+    dobby_static
     quickjs
     log
     dl
@@ -83,6 +87,7 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "debug")
     target_link_options(breeze_api PRIVATE
         -Wl,--strip-all
         -Wl,--gc-sections
+        -Wl,--exclude-libs,ALL
         -Wl,-z,max-page-size=${BREEZE_MAX_PAGE_ALIGNMENT}
     )
 endif()

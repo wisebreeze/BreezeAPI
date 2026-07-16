@@ -196,8 +196,8 @@ public:
     void SetStackSize(size_t limit);
 
 private:
-    struct Impl;
-    Impl* impl_;
+    // Opaque pointer — actual definition lives in js_engine.cpp
+    void* impl_;
 };
 
 } // namespace breeze

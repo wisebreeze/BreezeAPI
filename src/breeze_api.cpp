@@ -265,13 +265,13 @@ breeze_js_result breeze_js_eval(const char* source, const char* filename) {
         source, filename ? filename : "<eval>");
     // NOTE: the returned value pointer is only valid until the next JS call
     // Callers should copy the string immediately.
-    return {r.success ? 1 : 0, r.type, r.value.c_str()};
+    return {r.success ? 1 : 0, static_cast<int32_t>(r.type), r.value.c_str()};
 }
 
 breeze_js_result breeze_js_eval_module(const char* source, const char* filename) {
     auto r = breeze::BreezeAPI::Instance().EvalJSModule(
         source, filename ? filename : "<module>.mjs");
-    return {r.success ? 1 : 0, r.type, r.value.c_str()};
+    return {r.success ? 1 : 0, static_cast<int32_t>(r.type), r.value.c_str()};
 }
 
 bool breeze_js_set_global_string(const char* name, const char* value) {

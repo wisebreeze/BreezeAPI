@@ -7,6 +7,8 @@
 #include <optional>
 #include <unordered_map>
 
+#include "js_engine.h"  // JSResult, JSNativeCallback, JSType
+
 #ifdef _WIN32
 #   define BREEZE_EXPORT __declspec(dllexport)
 #else
@@ -55,15 +57,6 @@ struct BreezeConfig {
     bool         log_to_android = true;     ///< Use __android_log_print
     std::string  log_tag     = "BreezeAPI";
 };
-
-// ── JS types (forward declared for API header) ────────────────
-struct JSResult {
-    bool        success = false;
-    int32_t     type    = 0;     ///< JSType value: 0=Undefined,1=Null,2=Bool,3=Number,4=String,5=Object,6=Function,7=Exception
-    std::string value;           ///< Stringified result or error message
-};
-
-using JSNativeCallback = std::function<std::string(const std::vector<std::string>&)>;
 
 // ══════════════════════════════════════════════════════════════
 //  Core API

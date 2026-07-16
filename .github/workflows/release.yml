@@ -1,13 +1,6 @@
 name: Build and Release
 
 on:
-  push:
-    tags:
-      - 'v*'
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - 'LICENSE'
   workflow_dispatch:
     inputs:
       version:
@@ -34,17 +27,59 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Cache Android NDK
+        uses: actions/cache@v4
+        id: cache-ndk
+        with:
+          path: /opt/ndk/r27c
+          key: ndk-r27c-linux
+
       - name: Set up Android NDK
+        if: steps.cache-ndk.outputs.cache-hit != 'true'
         uses: nttld/setup-ndk@v1
         id: setup-ndk
         with:
           ndk-version: r27c
-          add-to-path: true
+          add-to-path: false
+
+      - name: Restore NDK path
+        if: steps.cache-ndk.outputs.cache-hit == 'true'
+        run: echo "NDK_PATH=/opt/ndk/r27c" >> "$GITHUB_ENV"
+
+      - name: Set NDK path from install
+        if: steps.cache-ndk.outputs.cache-hit != 'true'
+        run: |
+          NDK_SRC="${{ steps.setup-ndk.outputs.ndk-path }}"
+          NDK_DST="/opt/ndk/r27c"
+          mkdir -p "$(dirname "$NDK_DST")"
+          cp -a "$NDK_SRC" "$NDK_DST"
+          echo "NDK_PATH=$NDK_DST" >> "$GITHUB_ENV"
+
+      - name: Cache CMake
+        uses: actions/cache@v4
+        id: cache-cmake
+        with:
+          path: /opt/cmake
+          key: cmake-3.25-linux
 
       - name: Set up CMake
+        if: steps.cache-cmake.outputs.cache-hit != 'true'
         uses: jwlawson/actions-setup-cmake@v2
+        id: setup-cmake
         with:
           cmake-version: '3.25.x'
+
+      - name: Cache CMake installation
+        if: steps.cache-cmake.outputs.cache-hit != 'true'
+        run: |
+          CMAKE_BIN="$(which cmake)"
+          CMAKE_DIR="$(dirname "$(dirname "$CMAKE_BIN")")"
+          mkdir -p /opt/cmake
+          cp -a "$CMAKE_DIR/." /opt/cmake/
+
+      - name: Add CMake to PATH
+        if: steps.cache-cmake.outputs.cache-hit == 'true'
+        run: echo "/opt/cmake/bin" >> "$GITHUB_PATH"
 
       - name: Determine version
         id: version
@@ -57,10 +92,26 @@ jobs:
             echo "tag=snapshot-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Patch Dobby ARM64 assembly for ELF
+        run: |
+          # Dobby's closure_bridge_arm64.asm uses Apple Mach-O @PAGE/@PAGEOFF
+          # relocations which are invalid on ELF targets (Android/Linux).
+          # Replace with ELF-compatible AArch64 syntax:
+          #   @PAGE     -> (removed, ADRP handles ELF relocations implicitly)
+          #   @PAGEOFF  -> #:lo12: (ELF low-12-bit relocation modifier)
+          ASM_FILE="third_party/dobby/source/TrampolineBridge/ClosureTrampolineBridge/arm64/closure_bridge_arm64.asm"
+          if [ -f "$ASM_FILE" ]; then
+            sed -i 's/@PAGE//g; s/@PAGEOFF/#:lo12:/g' "$ASM_FILE"
+            echo "Patched $ASM_FILE for ELF compatibility"
+            grep -n 'adrp\|add.*lo12' "$ASM_FILE"
+          else
+            echo "Warning: $ASM_FILE not found"
+          fi
+
       - name: Build for arm64-v8a
         run: |
           cmake -B build/arm64-v8a \
-            -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
+            -DCMAKE_TOOLCHAIN_FILE=${{ env.NDK_PATH }}/build/cmake/android.toolchain.cmake \
             -DANDROID_ABI=arm64-v8a \
             -DANDROID_PLATFORM=android-26 \
             -DCMAKE_BUILD_TYPE=Release \
@@ -70,7 +121,7 @@ jobs:
       - name: Build for armeabi-v7a
         run: |
           cmake -B build/armeabi-v7a \
-            -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
+            -DCMAKE_TOOLCHAIN_FILE=${{ env.NDK_PATH }}/build/cmake/android.toolchain.cmake \
             -DANDROID_ABI=armeabi-v7a \
             -DANDROID_PLATFORM=android-26 \
             -DCMAKE_BUILD_TYPE=Release \
@@ -80,7 +131,7 @@ jobs:
       - name: Build for x86_64
         run: |
           cmake -B build/x86_64 \
-            -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
+            -DCMAKE_TOOLCHAIN_FILE=${{ env.NDK_PATH }}/build/cmake/android.toolchain.cmake \
             -DANDROID_ABI=x86_64 \
             -DANDROID_PLATFORM=android-26 \
             -DCMAKE_BUILD_TYPE=Release \
@@ -129,7 +180,7 @@ jobs:
             release/include/
 
       - name: Create GitHub Release
-        if: ${{ github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.create_release == true) }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.create_release == true }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}

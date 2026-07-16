@@ -32,6 +32,9 @@ static inline const JSEngineImpl* GetImplConst(const void* p) {
     return static_cast<const JSEngineImpl*>(p);
 }
 
+// Forward declaration — defined after all JSEngine member functions
+static JSResult ConvertResult(JSContext* ctx, JSValue val);
+
 // ── Native function trampoline ────────────────────────────────
 // Uses a unique magic number per function to dispatch correctly.
 static JSValue js_native_callback(JSContext* ctx, JSValueConst this_val,

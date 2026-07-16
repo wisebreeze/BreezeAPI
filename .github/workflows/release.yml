@@ -97,11 +97,11 @@ jobs:
           # Dobby's closure_bridge_arm64.asm uses Apple Mach-O @PAGE/@PAGEOFF
           # relocations which are invalid on ELF targets (Android/Linux).
           # Replace with ELF-compatible AArch64 syntax:
-          #   @PAGE     -> (removed, ADRP handles ELF relocations implicitly)
-          #   @PAGEOFF  -> #:lo12: (ELF low-12-bit relocation modifier)
+          #   symbol@PAGE     -> symbol              (ADRP handles ELF relocations implicitly)
+          #   symbol@PAGEOFF  -> #:lo12:symbol       (ELF low-12-bit relocation modifier BEFORE symbol)
           ASM_FILE="third_party/dobby/source/TrampolineBridge/ClosureTrampolineBridge/arm64/closure_bridge_arm64.asm"
           if [ -f "$ASM_FILE" ]; then
-            sed -i 's/@PAGEOFF/#:lo12:/g; s/@PAGE//g' "$ASM_FILE"
+            sed -i 's/\([^ ]*\)@PAGEOFF/#:lo12:\1/g; s/@PAGE//g' "$ASM_FILE"
             echo "Patched $ASM_FILE for ELF compatibility"
             grep -n 'adrp\|add.*lo12' "$ASM_FILE"
           else

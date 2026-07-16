@@ -144,6 +144,7 @@ jobs:
           cp include/breeze_api.h release/include/
           cp include/hook_manager.h release/include/
           cp include/symbol_resolver.h release/include/
+          cp include/js_engine.h release/include/
           cp include/logger.h release/include/
 
           # Create zip

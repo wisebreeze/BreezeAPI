@@ -33,6 +33,7 @@ jobs:
         with:
           path: /opt/ndk/r27c
           key: ndk-r27c-linux
+          save-always: true
 
       - name: Set up Android NDK
         if: steps.cache-ndk.outputs.cache-hit != 'true'
@@ -61,6 +62,7 @@ jobs:
         with:
           path: /opt/cmake
           key: cmake-3.25-linux
+          save-always: true
 
       - name: Set up CMake
         if: steps.cache-cmake.outputs.cache-hit != 'true'

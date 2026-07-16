@@ -10,7 +10,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/out/bin/${ANDROID_ABI}")
 
 # ── Dobby (inline hook framework) ─────────────────────────────
 set(DOBBY_DEBUG OFF CACHE BOOL "" FORCE)
-set(DOBBY_SECTIONS_HANDLER OFF CACHE BOOL "" FORCE)
+set(DOBBY_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
+set(DOBBY_BUILD_TEST OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(third_party/dobby dobby)
 

@@ -33,10 +33,18 @@ target_link_libraries(breeze_api
     dl
 )
 
+# 16KB page alignment (Android 15+ compatibility)
+# See: https://developer.android.com/guide/practices/page-sizes
+set(BREEZE_MAX_PAGE_ALIGNMENT "16384" CACHE STRING "Maximum page alignment for .so files")
+
 # Strip non-debug builds
 if(NOT CMAKE_BUILD_TYPE STREQUAL "debug")
     target_compile_options(breeze_api PRIVATE -O2 -fvisibility=hidden)
-    target_link_options(breeze_api PRIVATE -Wl,--strip-all -Wl,--gc-sections)
+    target_link_options(breeze_api PRIVATE
+        -Wl,--strip-all
+        -Wl,--gc-sections
+        -Wl,-z,max-page-size=${BREEZE_MAX_PAGE_ALIGNMENT}
+    )
 endif()
 
 # ── Install rules ─────────────────────────────────────────────

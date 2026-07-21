@@ -6,8 +6,12 @@
 #include <sstream>
 #include <cstdlib>
 
-// Forward declare dobby symbol resolver
-extern "C" void* DobbySymbolResolver(const char* image_name, const char* symbol_name);
+// Forward declare dobby symbol resolver as a weak symbol so the link
+// succeeds whether or not the Dobby symbol-resolver plugin is built.
+// When Plugin.SymbolResolver is OFF, DobbySymbolResolver is not defined
+// and the symbol resolves to nullptr at link time; the call below is
+// then skipped via the null check.
+extern "C" __attribute__((weak)) void* DobbySymbolResolver(const char* image_name, const char* symbol_name);
 
 namespace breeze {
 
@@ -56,11 +60,14 @@ void* SymbolResolver::ResolveSymbol(const std::string& library, const std::strin
         }
     }
 
-    // Strategy 3: DobbySymbolResolver
-    result = DobbySymbolResolver(library.c_str(), symbol.c_str());
-    if (result) {
-        Logger::Debug("Resolved symbol %s via DobbySymbolResolver: %p", symbol.c_str(), result);
-        return result;
+    // Strategy 3: DobbySymbolResolver (only available when the Dobby
+    // symbol-resolver plugin is built; skip if the weak symbol is null).
+    if (DobbySymbolResolver) {
+        result = DobbySymbolResolver(library.c_str(), symbol.c_str());
+        if (result) {
+            Logger::Debug("Resolved symbol %s via DobbySymbolResolver: %p", symbol.c_str(), result);
+            return result;
+        }
     }
 
     Logger::Warn("Failed to resolve symbol %s in %s", symbol.c_str(), library.c_str());

@@ -15,6 +15,11 @@ set(DOBBY_DEBUG OFF CACHE BOOL "" FORCE)
 set(DOBBY_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
 set(DOBBY_BUILD_TEST OFF CACHE BOOL "" FORCE)
 set(DOBBY_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+# Disable the symbol resolver plugin: it builds a separate shared lib
+# (libdobby_symbol_resolver.so) that fails to link because it references
+# logger_log_impl from the logging target without linking it. BreezeAPI
+# only uses dobby_static, so the plugin is unnecessary.
+set(Plugin.SymbolResolver OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(third_party/dobby dobby)
 

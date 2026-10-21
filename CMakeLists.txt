@@ -23,6 +23,23 @@ set(Plugin.SymbolResolver OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(third_party/dobby dobby)
 
+# Dobby is an upstream third-party library (jmpews/Dobby) and carries
+# two known -Wformat-truncation / -Wmacro-redefined warnings under
+# NDK r29 that we cannot fix upstream. Suppress them on the dobby
+# targets so the build log stays clean; the warnings are benign:
+#   - snprintf size 3 for "%02x " (4 bytes): only truncates the
+#     trailing space on the last byte of a hex dump, cosmetic.
+#   - LINE_MAX redefined: dobby's 2048 vs NDK's _POSIX2_LINE_MAX,
+#     both are >= any line dobby reads from /proc/self/maps.
+target_compile_options(dobby PRIVATE
+    -Wno-format-truncation
+    -Wno-macro-redefined
+)
+target_compile_options(dobby_static PRIVATE
+    -Wno-format-truncation
+    -Wno-macro-redefined
+)
+
 # ── QuickJS (JavaScript engine) ───────────────────────────────
 set(QUICKJS_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quickjs)
 

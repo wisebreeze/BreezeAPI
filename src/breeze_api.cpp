@@ -260,18 +260,38 @@ void breeze_set_log_level(int32_t level) {
 
 // ── JS engine C ABI ──────────────────────────────────────────
 
+namespace {
+// Copy a std::string into a heap-allocated null-terminated char* that
+// the C caller can hold past the lifetime of the source. Returns
+// nullptr on allocation failure. The caller releases it via
+// breeze_js_free_result (which calls free).
+char* dupToHeap(const std::string& s) {
+    char* p = static_cast<char*>(malloc(s.size() + 1));
+    if (p != nullptr) {
+        memcpy(p, s.data(), s.size());
+        p[s.size()] = '\0';
+    }
+    return p;
+}
+} // namespace
+
 breeze_js_result breeze_js_eval(const char* source, const char* filename) {
     auto r = breeze::BreezeAPI::Instance().EvalJS(
         source, filename ? filename : "<eval>");
-    // NOTE: the returned value pointer is only valid until the next JS call
-    // Callers should copy the string immediately.
-    return {r.success ? 1 : 0, static_cast<int32_t>(r.type), r.value.c_str()};
+    return {r.success ? 1 : 0, static_cast<int32_t>(r.type), dupToHeap(r.value)};
 }
 
 breeze_js_result breeze_js_eval_module(const char* source, const char* filename) {
     auto r = breeze::BreezeAPI::Instance().EvalJSModule(
         source, filename ? filename : "<module>.mjs");
-    return {r.success ? 1 : 0, static_cast<int32_t>(r.type), r.value.c_str()};
+    return {r.success ? 1 : 0, static_cast<int32_t>(r.type), dupToHeap(r.value)};
+}
+
+void breeze_js_free_result(breeze_js_result* result) {
+    if (result != nullptr && result->value != nullptr) {
+        free(result->value);
+        result->value = nullptr;
+    }
 }
 
 bool breeze_js_set_global_string(const char* name, const char* value) {

@@ -325,14 +325,23 @@ BREEZE_EXPORT void*       breeze_resolve_symbol(const char* lib, const char* sym
 BREEZE_EXPORT void        breeze_set_log_level(int32_t level);
 
 // ── JS engine C ABI ──────────────────────────────────────────
+//
+// breeze_js_eval / breeze_js_eval_module return a breeze_js_result
+// whose `value` field is a heap-allocated copy (via strdup). The
+// caller MUST release it with breeze_js_free_result to avoid a
+// memory leak. Keeping the value alive on the heap is necessary
+// because the underlying std::string inside JSResult is destroyed
+// when the function returns, so returning its c_str() would yield a
+// dangling pointer.
 typedef struct breeze_js_result {
     int32_t     success;
     int32_t     type;
-    const char* value;
+    char*       value;  // heap-allocated; free with breeze_js_free_result
 } breeze_js_result;
 
 BREEZE_EXPORT breeze_js_result breeze_js_eval(const char* source, const char* filename);
 BREEZE_EXPORT breeze_js_result breeze_js_eval_module(const char* source, const char* filename);
+BREEZE_EXPORT void             breeze_js_free_result(breeze_js_result* result);
 BREEZE_EXPORT bool             breeze_js_set_global_string(const char* name, const char* value);
 BREEZE_EXPORT bool             breeze_js_set_global_number(const char* name, double value);
 BREEZE_EXPORT bool             breeze_js_set_global_bool(const char* name, int32_t value);

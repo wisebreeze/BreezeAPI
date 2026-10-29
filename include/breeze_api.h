@@ -7,8 +7,6 @@
 #include <optional>
 #include <unordered_map>
 
-#include "js_engine.h"  // JSResult, JSNativeCallback, JSType
-
 #ifdef _WIN32
 #   define BREEZE_EXPORT __declspec(dllexport)
 #else
@@ -173,122 +171,6 @@ public:
      */
     Address ResolveSymbol(const std::string& library, const std::string& symbol) const;
 
-    // ── JavaScript engine ─────────────────────────────────────
-
-    /**
-     * Evaluate a JavaScript source string.
-     *
-     * @param source    JavaScript code to evaluate
-     * @param filename  Optional filename for error reporting
-     * @return JSResult with success status, type, and stringified value
-     */
-    JSResult EvalJS(const std::string& source, const std::string& filename = "<eval>");
-
-    /**
-     * Evaluate a JavaScript ES module from source.
-     *
-     * @param source    JavaScript module code (can use import/export)
-     * @param filename  Module filename (should end with .mjs)
-     * @return JSResult with success status and result
-     */
-    JSResult EvalJSModule(const std::string& source, const std::string& filename = "<module>.mjs");
-
-    /**
-     * Set a global JavaScript property (string value).
-     *
-     * @param name   Property name on the global object
-     * @param value  String value to set
-     * @return true on success
-     */
-    bool SetJSGlobalString(const std::string& name, const std::string& value);
-
-    /**
-     * Set a global JavaScript property (number value).
-     *
-     * @param name   Property name on the global object
-     * @param value  Numeric value to set
-     * @return true on success
-     */
-    bool SetJSGlobalNumber(const std::string& name, double value);
-
-    /**
-     * Set a global JavaScript property (boolean value).
-     *
-     * @param name   Property name on the global object
-     * @param value  Boolean value to set
-     * @return true on success
-     */
-    bool SetJSGlobalBool(const std::string& name, bool value);
-
-    /**
-     * Get a global JavaScript property as a string.
-     *
-     * @param name  Property name on the global object
-     * @return String value, or empty optional if not found
-     */
-    std::optional<std::string> GetJSGlobalString(const std::string& name) const;
-
-    /**
-     * Get a global JavaScript property as a number.
-     *
-     * @param name  Property name on the global object
-     * @return Numeric value, or empty optional if not found
-     */
-    std::optional<double> GetJSGlobalNumber(const std::string& name) const;
-
-    /**
-     * Register a native C++ callback as a global JavaScript function.
-     *
-     * The callback receives arguments as stringified values and must
-     * return a string result.
-     *
-     * @param name      Function name on the global object
-     * @param callback  C++ callback to invoke when JS calls the function
-     * @return true on success
-     */
-    bool RegisterJSFunction(const std::string& name, JSNativeCallback callback);
-
-    /**
-     * Unregister a previously registered native JS function.
-     *
-     * @param name  Function name to remove
-     * @return true if the function was found and removed
-     */
-    bool UnregisterJSFunction(const std::string& name);
-
-    /**
-     * Register a JS source as a module that can be imported.
-     *
-     * @param specifier  Module specifier (import path)
-     * @param source     JavaScript module source code
-     * @return true on success
-     */
-    bool RegisterJSModule(const std::string& specifier, const std::string& source);
-
-    /**
-     * Run a garbage collection cycle on the JS engine.
-     */
-    void JSGC();
-
-    /**
-     * Get current JS heap memory usage in bytes.
-     */
-    size_t GetJSMemoryUsage() const;
-
-    /**
-     * Set the JS heap memory limit.
-     *
-     * @param limit  Maximum bytes the JS heap can use (0 = unlimited)
-     */
-    void SetJSMemoryLimit(size_t limit);
-
-    /**
-     * Set the JS stack size limit.
-     *
-     * @param limit  Maximum stack size in bytes (0 = default 256KB)
-     */
-    void SetJSStackSize(size_t limit);
-
     // ── Configuration ─────────────────────────────────────────
 
     void SetLogLevel(LogLevel level);
@@ -323,34 +205,5 @@ BREEZE_EXPORT void*       breeze_resolve_library(const char* lib);
 BREEZE_EXPORT void*       breeze_resolve_symbol(const char* lib, const char* sym);
 
 BREEZE_EXPORT void        breeze_set_log_level(int32_t level);
-
-// ── JS engine C ABI ──────────────────────────────────────────
-//
-// breeze_js_eval / breeze_js_eval_module return a breeze_js_result
-// whose `value` field is a heap-allocated copy (via strdup). The
-// caller MUST release it with breeze_js_free_result to avoid a
-// memory leak. Keeping the value alive on the heap is necessary
-// because the underlying std::string inside JSResult is destroyed
-// when the function returns, so returning its c_str() would yield a
-// dangling pointer.
-typedef struct breeze_js_result {
-    int32_t     success;
-    int32_t     type;
-    char*       value;  // heap-allocated; free with breeze_js_free_result
-} breeze_js_result;
-
-BREEZE_EXPORT breeze_js_result breeze_js_eval(const char* source, const char* filename);
-BREEZE_EXPORT breeze_js_result breeze_js_eval_module(const char* source, const char* filename);
-BREEZE_EXPORT void             breeze_js_free_result(breeze_js_result* result);
-BREEZE_EXPORT bool             breeze_js_set_global_string(const char* name, const char* value);
-BREEZE_EXPORT bool             breeze_js_set_global_number(const char* name, double value);
-BREEZE_EXPORT bool             breeze_js_set_global_bool(const char* name, int32_t value);
-BREEZE_EXPORT char*            breeze_js_get_global_string(const char* name);
-BREEZE_EXPORT double           breeze_js_get_global_number(const char* name);
-BREEZE_EXPORT void             breeze_js_gc();
-BREEZE_EXPORT size_t           breeze_js_memory_usage();
-BREEZE_EXPORT void             breeze_js_set_memory_limit(size_t limit);
-BREEZE_EXPORT void             breeze_js_set_stack_size(size_t limit);
-BREEZE_EXPORT void             breeze_js_free_string(char* str);
 
 } // extern "C"

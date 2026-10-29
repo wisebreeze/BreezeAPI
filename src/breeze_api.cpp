@@ -1,7 +1,6 @@
 #include "breeze_api.h"
 #include "hook_manager.h"
 #include "symbol_resolver.h"
-#include "js_engine.h"
 #include "logger.h"
 
 #include <mutex>
@@ -15,7 +14,6 @@ struct BreezeAPI::Impl {
     BreezeConfig      config;
     HookManager       hook_mgr;
     SymbolResolver     resolver;
-    JSEngine          js_engine;
     std::mutex        mutex;
 };
 
@@ -46,7 +44,6 @@ void BreezeAPI::Shutdown() {
     if (!impl_->initialized) return;
 
     impl_->hook_mgr.UnhookAll();
-    impl_->js_engine.Shutdown();
     Logger::Info("BreezeAPI shut down");
     impl_->initialized = false;
 }
@@ -137,63 +134,6 @@ Address BreezeAPI::ResolveSymbol(const std::string& library, const std::string& 
     return impl_->resolver.ResolveSymbol(library, symbol);
 }
 
-// ── JavaScript engine ─────────────────────────────────────────
-JSResult BreezeAPI::EvalJS(const std::string& source, const std::string& filename) {
-    return impl_->js_engine.Eval(source, filename);
-}
-
-JSResult BreezeAPI::EvalJSModule(const std::string& source, const std::string& filename) {
-    return impl_->js_engine.EvalModule(source, filename);
-}
-
-bool BreezeAPI::SetJSGlobalString(const std::string& name, const std::string& value) {
-    return impl_->js_engine.SetGlobalString(name, value);
-}
-
-bool BreezeAPI::SetJSGlobalNumber(const std::string& name, double value) {
-    return impl_->js_engine.SetGlobalNumber(name, value);
-}
-
-bool BreezeAPI::SetJSGlobalBool(const std::string& name, bool value) {
-    return impl_->js_engine.SetGlobalBool(name, value);
-}
-
-std::optional<std::string> BreezeAPI::GetJSGlobalString(const std::string& name) const {
-    return impl_->js_engine.GetGlobalString(name);
-}
-
-std::optional<double> BreezeAPI::GetJSGlobalNumber(const std::string& name) const {
-    return impl_->js_engine.GetGlobalNumber(name);
-}
-
-bool BreezeAPI::RegisterJSFunction(const std::string& name, JSNativeCallback callback) {
-    return impl_->js_engine.RegisterNativeFunction(name, std::move(callback));
-}
-
-bool BreezeAPI::UnregisterJSFunction(const std::string& name) {
-    return impl_->js_engine.UnregisterNativeFunction(name);
-}
-
-bool BreezeAPI::RegisterJSModule(const std::string& specifier, const std::string& source) {
-    return impl_->js_engine.RegisterModule(specifier, source);
-}
-
-void BreezeAPI::JSGC() {
-    impl_->js_engine.GC();
-}
-
-size_t BreezeAPI::GetJSMemoryUsage() const {
-    return impl_->js_engine.GetMemoryUsage();
-}
-
-void BreezeAPI::SetJSMemoryLimit(size_t limit) {
-    impl_->js_engine.SetMemoryLimit(limit);
-}
-
-void BreezeAPI::SetJSStackSize(size_t limit) {
-    impl_->js_engine.SetStackSize(limit);
-}
-
 // ── Configuration ─────────────────────────────────────────────
 void BreezeAPI::SetLogLevel(LogLevel level) {
     impl_->config.log_level = level;
@@ -256,90 +196,6 @@ void* breeze_resolve_symbol(const char* lib, const char* sym) {
 
 void breeze_set_log_level(int32_t level) {
     breeze::BreezeAPI::Instance().SetLogLevel(static_cast<breeze::LogLevel>(level));
-}
-
-// ── JS engine C ABI ──────────────────────────────────────────
-
-namespace {
-// Copy a std::string into a heap-allocated null-terminated char* that
-// the C caller can hold past the lifetime of the source. Returns
-// nullptr on allocation failure. The caller releases it via
-// breeze_js_free_result (which calls free).
-char* dupToHeap(const std::string& s) {
-    char* p = static_cast<char*>(malloc(s.size() + 1));
-    if (p != nullptr) {
-        memcpy(p, s.data(), s.size());
-        p[s.size()] = '\0';
-    }
-    return p;
-}
-} // namespace
-
-breeze_js_result breeze_js_eval(const char* source, const char* filename) {
-    auto r = breeze::BreezeAPI::Instance().EvalJS(
-        source, filename ? filename : "<eval>");
-    return {r.success ? 1 : 0, static_cast<int32_t>(r.type), dupToHeap(r.value)};
-}
-
-breeze_js_result breeze_js_eval_module(const char* source, const char* filename) {
-    auto r = breeze::BreezeAPI::Instance().EvalJSModule(
-        source, filename ? filename : "<module>.mjs");
-    return {r.success ? 1 : 0, static_cast<int32_t>(r.type), dupToHeap(r.value)};
-}
-
-void breeze_js_free_result(breeze_js_result* result) {
-    if (result != nullptr && result->value != nullptr) {
-        free(result->value);
-        result->value = nullptr;
-    }
-}
-
-bool breeze_js_set_global_string(const char* name, const char* value) {
-    return breeze::BreezeAPI::Instance().SetJSGlobalString(name, value);
-}
-
-bool breeze_js_set_global_number(const char* name, double value) {
-    return breeze::BreezeAPI::Instance().SetJSGlobalNumber(name, value);
-}
-
-bool breeze_js_set_global_bool(const char* name, int32_t value) {
-    return breeze::BreezeAPI::Instance().SetJSGlobalBool(name, value != 0);
-}
-
-char* breeze_js_get_global_string(const char* name) {
-    auto val = breeze::BreezeAPI::Instance().GetJSGlobalString(name);
-    if (!val) return nullptr;
-    // Allocate a copy that the caller must free with breeze_js_free_string
-    char* result = static_cast<char*>(malloc(val->size() + 1));
-    if (result) {
-        memcpy(result, val->c_str(), val->size() + 1);
-    }
-    return result;
-}
-
-double breeze_js_get_global_number(const char* name) {
-    auto val = breeze::BreezeAPI::Instance().GetJSGlobalNumber(name);
-    return val.value_or(0.0);
-}
-
-void breeze_js_gc() {
-    breeze::BreezeAPI::Instance().JSGC();
-}
-
-size_t breeze_js_memory_usage() {
-    return breeze::BreezeAPI::Instance().GetJSMemoryUsage();
-}
-
-void breeze_js_set_memory_limit(size_t limit) {
-    breeze::BreezeAPI::Instance().SetJSMemoryLimit(limit);
-}
-
-void breeze_js_set_stack_size(size_t limit) {
-    breeze::BreezeAPI::Instance().SetJSStackSize(limit);
-}
-
-void breeze_js_free_string(char* str) {
-    free(str);
 }
 
 } // extern "C"

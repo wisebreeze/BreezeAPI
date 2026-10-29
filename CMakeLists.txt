@@ -40,50 +40,11 @@ target_compile_options(dobby_static PRIVATE
     -Wno-macro-redefined
 )
 
-# ── QuickJS (JavaScript engine) ───────────────────────────────
-set(QUICKJS_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quickjs)
-
-add_library(quickjs STATIC
-    ${QUICKJS_SRC_DIR}/quickjs.c
-    ${QUICKJS_SRC_DIR}/libregexp.c
-    ${QUICKJS_SRC_DIR}/libunicode.c
-    ${QUICKJS_SRC_DIR}/dtoa.c
-    ${QUICKJS_SRC_DIR}/quickjs-libc.c
-    ${QUICKJS_SRC_DIR}/cutils.c
-)
-
-# NOTE: use SYSTEM to prevent the quickjs source dir from shadowing C++
-# standard library headers. quickjs ships a file named "VERSION" which,
-# on case-insensitive filesystems (Windows / macOS default), collides with
-# the C++20 <version> header and breaks libc++ includes.
-target_include_directories(quickjs SYSTEM PUBLIC
-    ${QUICKJS_SRC_DIR}
-)
-
-target_compile_definitions(quickjs PRIVATE
-    _GNU_SOURCE
-    CONFIG_VERSION="2026-06-04"
-)
-
-# QuickJS uses C99 VLAs and other features; suppress warnings
-target_compile_options(quickjs PRIVATE
-    -Wno-vla-cxx-extension
-    -Wno-unused-parameter
-    -Wno-sign-compare
-    -Wno-missing-field-initializers
-    -fvisibility=hidden
-)
-
-if(NOT CMAKE_BUILD_TYPE STREQUAL "debug")
-    target_compile_options(quickjs PRIVATE -O2)
-endif()
-
 # ── BreezeAPI shared library ──────────────────────────────────
 add_library(breeze_api SHARED
     src/breeze_api.cpp
     src/hook_manager.cpp
     src/symbol_resolver.cpp
-    src/js_engine.cpp
     src/logger.cpp
 )
 
@@ -91,8 +52,6 @@ target_include_directories(breeze_api
     PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/dobby/include
-    PRIVATE
-    SYSTEM ${QUICKJS_SRC_DIR}
 )
 
 # Link dobby_static instead of dobby shared to avoid duplicate symbol
@@ -101,7 +60,6 @@ target_include_directories(breeze_api
 # leak into the final .so symbol table.
 target_link_libraries(breeze_api
     dobby_static
-    quickjs
     log
     dl
     m

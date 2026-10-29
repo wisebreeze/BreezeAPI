@@ -52,7 +52,11 @@ add_library(quickjs STATIC
     ${QUICKJS_SRC_DIR}/cutils.c
 )
 
-target_include_directories(quickjs PUBLIC
+# NOTE: use SYSTEM to prevent the quickjs source dir from shadowing C++
+# standard library headers. quickjs ships a file named "VERSION" which,
+# on case-insensitive filesystems (Windows / macOS default), collides with
+# the C++20 <version> header and breaks libc++ includes.
+target_include_directories(quickjs SYSTEM PUBLIC
     ${QUICKJS_SRC_DIR}
 )
 
@@ -83,10 +87,12 @@ add_library(breeze_api SHARED
     src/logger.cpp
 )
 
-target_include_directories(breeze_api PUBLIC
+target_include_directories(breeze_api
+    PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/dobby/include
-    ${QUICKJS_SRC_DIR}
+    PRIVATE
+    SYSTEM ${QUICKJS_SRC_DIR}
 )
 
 # Link dobby_static instead of dobby shared to avoid duplicate symbol
